@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "xrst_bridge",
+  "version": "${version}",
+  "name": "XRST Web Chat Bridge",
+  "description": "游戏内聊天与 xrst.uk 网页聊天室双向互通（仅服务端）。",
+  "authors": [
+    "AaronXie"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "server": [
+      "uk.xrst.bridge.XrstBridgeMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": ">=26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
