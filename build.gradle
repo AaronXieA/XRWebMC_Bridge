@@ -26,6 +26,10 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
+    // Gradle 自身可运行在 JDK 17/21 上，编译与运行强制使用 JDK 25 工具链
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }
