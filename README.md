@@ -134,27 +134,60 @@ X-MC-Secret: <密钥>
 
 要求：Minecraft ≥ 26.2，Fabric Loader ≥ 0.19.0，Fabric API，Java ≥ 25，仅服务端。
 
-1. 下载或自行构建（`./gradlew build`，产物在 `build/libs/xrst-bridge-<版本>.jar`），放入服务器 `mods/` 目录；
-2. 首次启动会在 `config/xrst-bridge.properties` 生成配置文件：
-3. 填写 `secret`（与网站后端一致）后重启。
+### 方式一：下载预构建 jar（推荐）
+
+到 [Releases 页面](https://github.com/AaronXieA/XRWebMC_Bridge/releases) 下载最新版 `xrst-bridge-<版本>.jar`，直接放入服务器 `mods/` 目录即可，无需自行编译。
+
+> 下载前请确认 jar 的版本与服务器的 Minecraft 版本匹配（当前版本对应 MC 26.2）。
+
+### 方式二：自行从源码构建
+
+需要 JDK 25：
+
+```bash
+./gradlew build
+# 产物：build/libs/xrst-bridge-<版本>.jar
+```
+
+把产物放入服务器 `mods/` 目录。
+
+### 安装后的配置（必填）
+
+mod **不内置任何默认服务器地址**。首次启动会在 `config/xrst-bridge.properties` 生成配置文件（此时不会启动任何转发），必须填入**你自己的网站接口地址**和密钥后重启：
+
+```properties
+enabled=true
+# 游戏 -> 网页：你的网站上报接口（留空则关闭该方向）
+webhook-url=https://example.com/api/mc/ingest
+# 网页 -> 游戏：你的网站轮询接口（留空则关闭该方向）
+poll-url=https://example.com/api/mc/poll
+poll-enabled=true
+poll-interval=4
+# 与网站后端共享密钥一致（必须改掉 CHANGE_ME）
+secret=请改成你自己的随机密钥
+```
 
 ### 配置项
 
 | 配置项 | 默认值 | 说明 |
 |---|---|---|
-| `enabled` | `true` | 总开关（游戏→网页上报） |
-| `webhook-url` | `https://xrst.uk/api/mc/ingest` | 上报接口地址 |
+| `enabled` | `true` | 总开关；`false` 时两个方向都不启动 |
+| `webhook-url` | 空（必填才启动） | 上报接口地址（你的网站，不是任何人的固定域名） |
 | `poll-enabled` | `true` | 网页→游戏轮询开关 |
-| `poll-url` | `https://xrst.uk/api/mc/poll` | 拉取接口地址 |
+| `poll-url` | 空（必填才启动） | 拉取接口地址 |
 | `poll-interval` | `4` | 轮询间隔（秒，最小 2） |
 | `secret` | `CHANGE_ME` | 共享密钥，必须与网站后端一致 |
+
+> URL 留空只会关闭对应方向（可单向运行）；但 `secret` 为空或仍是 `CHANGE_ME` 时，两个方向都不会启动。
 
 ### 启动成功的标志
 
 ```
-[XRST-Bridge] 已启动，游戏聊天 -> https://xrst.uk/api/mc/ingest
-[XRST-Bridge] 网页消息轮询已开启，每 4 秒拉取一次 -> https://xrst.uk/api/mc/poll
+[XRST-Bridge] 游戏 -> 网页 已启动：https://example.com/api/mc/ingest
+[XRST-Bridge] 网页 -> 游戏 已启动，每 4 秒拉取一次：https://example.com/api/mc/poll
 ```
+
+若看到 `未配置 secret` 或 `webhook-url 与 poll-url 均为空`，说明配置没填，按上面模板补全后重启。
 
 常见问题：日志出现 `密钥被拒绝（401）` → 配置文件里的 `secret` 与网站后端不一致；轮询报 5xx → 检查网站后端接口（参考本文协议逐字段核对）。
 
