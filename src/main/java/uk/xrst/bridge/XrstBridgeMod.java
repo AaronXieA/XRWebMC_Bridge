@@ -41,8 +41,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class XrstBridgeMod implements DedicatedServerModInitializer {
 
-    private static final String DEFAULT_WEBHOOK = "https://xrst.uk/api/mc/ingest";
-    private static final String DEFAULT_POLL = "https://xrst.uk/api/mc/poll";
+    // 开源版本：默认不指向任何服务器，使用者必须在配置文件里填写自己的网址，
+    // 避免误把聊天发到别人的站点。
+    private static final String DEFAULT_WEBHOOK = "";
+    private static final String DEFAULT_POLL = "";
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -64,24 +66,40 @@ public class XrstBridgeMod implements DedicatedServerModInitializer {
     public void onInitializeServer() {
         loadConfig();
         if (!enabled) {
-            System.out.println("[XRST-Bridge] 已在 config/xrst-bridge.properties 中禁用，不转发聊天。");
+            System.out.println("[XRST-Bridge] 已在 config/xrst-bridge.properties 中禁用（enabled=false），不转发聊天。");
             return;
         }
-        if (secret == null || secret.isBlank()) {
-            System.out.println("[XRST-Bridge] 警告：secret 为空，请在 config/xrst-bridge.properties 配置（需与 Worker 的 MC_INGEST_SECRET 一致）。");
+        if (secret == null || secret.isBlank() || "CHANGE_ME".equals(secret)) {
+            System.out.println("[XRST-Bridge] 未配置 secret：请编辑 config/xrst-bridge.properties，"
+                    + "填入与网站后端一致的密钥后重启。本次不启动任何转发。");
+            return;
+        }
+
+        boolean webhookReady = !webhookUrl.isBlank();
+        boolean pollReady = pollEnabled && !pollUrl.isBlank();
+        if (!webhookReady && !pollReady) {
+            System.out.println("[XRST-Bridge] webhook-url 与 poll-url 均为空：请在 "
+                    + "config/xrst-bridge.properties 填写你自己的网站接口地址后重启。本次不启动任何转发。");
+            return;
         }
 
         // 游戏 -> 网页：返回 true 放行（不拦截、不修改聊天）
-        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(this::onChatMessage);
-        System.out.println("[XRST-Bridge] 已启动，游戏聊天 -> " + webhookUrl);
+        if (webhookReady) {
+            ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(this::onChatMessage);
+            System.out.println("[XRST-Bridge] 游戏 -> 网页 已启动：" + webhookUrl);
+        } else {
+            System.out.println("[XRST-Bridge] webhook-url 为空，游戏 -> 网页 方向不启动。");
+        }
 
-        if (pollEnabled) {
+        if (pollReady) {
             ServerLifecycleEvents.SERVER_STARTED.register(s -> {
                 this.server = s;
                 startPolling();
-                System.out.println("[XRST-Bridge] 网页消息轮询已开启，每 " + pollInterval + " 秒拉取一次 -> " + pollUrl);
+                System.out.println("[XRST-Bridge] 网页 -> 游戏 已启动，每 " + pollInterval + " 秒拉取一次：" + pollUrl);
             });
             ServerLifecycleEvents.SERVER_STOPPING.register(s -> stopPolling());
+        } else {
+            System.out.println("[XRST-Bridge] poll-url 为空或已禁用，网页 -> 游戏 方向不启动。");
         }
     }
 
@@ -234,9 +252,10 @@ public class XrstBridgeMod implements DedicatedServerModInitializer {
         secret = p.getProperty("secret", "");
 
         if (!Files.exists(file)) {
+            // 默认全部留空：必须填入使用者自己的网站地址与密钥，mod 才会启动。
             p.setProperty("enabled", "true");
-            p.setProperty("webhook-url", DEFAULT_WEBHOOK);
-            p.setProperty("poll-url", DEFAULT_POLL);
+            p.setProperty("webhook-url", "");
+            p.setProperty("poll-url", "");
             p.setProperty("poll-enabled", "true");
             p.setProperty("poll-interval", "4");
             p.setProperty("secret", "CHANGE_ME");
@@ -244,10 +263,13 @@ public class XrstBridgeMod implements DedicatedServerModInitializer {
                 Files.createDirectories(configDir);
                 try (OutputStream out = Files.newOutputStream(file)) {
                     p.store(out,
-                            "XRST web chat bridge. "
-                            + "secret MUST match the Worker secret MC_INGEST_SECRET.");
+                            "XRST web chat bridge configuration.\n"
+                            + "REQUIRED: set webhook-url / poll-url to YOUR OWN website endpoints,\n"
+                            + "and set secret to the same shared key used by the website backend.\n"
+                            + "Leave a URL empty to disable that direction.");
                 }
-                System.out.println("[XRST-Bridge] 已生成配置文件 config/xrst-bridge.properties，请填写 secret 后重启服务器。");
+                System.out.println("[XRST-Bridge] 已生成配置文件 config/xrst-bridge.properties，"
+                        + "请填写 webhook-url / poll-url / secret 后重启服务器。");
             } catch (IOException e) {
                 System.out.println("[XRST-Bridge] 生成配置文件失败: " + e);
             }
