@@ -4,8 +4,36 @@ pluginManagement {
             name = 'Fabric'
             url = 'https://maven.fabricmc.net/'
         }
+        maven {
+            name = 'Kikugie'
+            url = 'https://maven.kikugie.dev/releases'
+        }
         mavenCentral()
         gradlePluginPortal()
+    }
+}
+
+plugins {
+    id 'dev.kikugie.stonecutter' version '0.9.8'
+}
+
+stonecutter {
+    // 保持 Groovy 中央构建脚本（build.gradle）
+    kotlinController = false
+    centralScript = 'build.gradle'
+
+    create(rootProject) {
+        // 版本节点（目录名 = MC 版本）
+        versions(
+            '1.20.6',      // Java 21，1.20.5 签名聊天 API 起点
+            '1.21.1',
+            '1.21.4',
+            '1.21.6',
+            '1.21.8',
+            '1.21.11',     // 最后一个混淆版本
+            '26.2'         // 无混淆，Java 25
+        )
+        vcsVersion = '26.2'
     }
 }
 

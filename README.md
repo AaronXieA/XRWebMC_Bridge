@@ -130,21 +130,44 @@ X-MC-Secret: <密钥>
 
 ## 服务端安装（mod）
 
-要求：Minecraft ≥ 26.2，Fabric Loader ≥ 0.19.0，Fabric API，Java ≥ 25，仅服务端。
+通用要求：Fabric Loader ≥ 0.16.0、Fabric API、仅服务端。**每个 Minecraft 版本对应一个专用 jar**（jar 内写有精确版本约束，装错版本加载器会直接拒绝）。
+
+### 支持的 Minecraft 版本
+
+| Minecraft | Java | jar 后缀 |
+|---|---|---|
+| 1.20.6 | 21 | `+1.20.6` |
+| 1.21.1 | 21 | `+1.21.1` |
+| 1.21.4 | 21 | `+1.21.4` |
+| 1.21.6 | 21 | `+1.21.6` |
+| 1.21.8 | 21 | `+1.21.8` |
+| 1.21.11 | 21 | `+1.21.11` |
+| 26.2 | 25 | `+26.2` |
+
+> 说明：1.21.11 及更早版本是混淆版，mod 经 Loom 用 Mojang 官方映射编译并 remap 到 intermediary；26.x 起官方不再混淆。两类版本共用同一份源码（基于 [Stonecutter](https://stonecutter.kikugie.dev/) 多版本构建）。1.20.5 以下的老版本（如 1.8.9 / 1.12.2）需 Forge 与 Java 8，不在支持范围。
 
 ### 方式一：下载预构建 jar（推荐）
 
-到 [Releases 页面](https://github.com/AaronXieA/XRWebMC_Bridge/releases) 下载最新版 `xrst-bridge-<版本>.jar`，直接放入服务器 `mods/` 目录即可，无需自行编译。
+到 [Releases 页面](https://github.com/AaronXieA/XRWebMC_Bridge/releases)，下载文件名中带**与你服务器 Minecraft 版本一致后缀**的 `xrst-bridge-<mod版本>+<MC版本>.jar`，放入服务器 `mods/` 目录即可。
 
-> 下载前请确认 jar 的版本与服务器的 Minecraft 版本匹配（当前版本对应 MC 26.2）。
+例：服务器是 1.21.1 就下 `xrst-bridge-1.3.0+1.21.1.jar`；是 26.2 就下 `xrst-bridge-1.3.0+26.2.jar`。
 
 ### 方式二：自行从源码构建
 
-需要 JDK 25：
+工程使用 Stonecutter 管理多版本。运行 Gradle 需 **JDK 21+**；构建 26.x 节点额外需要本机装有 **JDK 25**（或配置工具链自动下载）。
+
+构建单个版本（产物在 `versions/<MC版本>/build/libs/`）：
 
 ```bash
-./gradlew build
-# 产物：build/libs/xrst-bridge-<版本>.jar
+./gradlew build -Pstonecutter.active=1.21.1
+```
+
+一次性构建全部版本：
+
+```bash
+for v in 1.20.6 1.21.1 1.21.4 1.21.6 1.21.8 1.21.11 26.2; do
+  ./gradlew build -Pstonecutter.active=$v
+done
 ```
 
 把产物放入服务器 `mods/` 目录。

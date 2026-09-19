@@ -1,9 +1,33 @@
-plugins {
-    // 26.1+ MC 已不再混淆，使用不 remap 的新 loom 插件
-    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
+// Stonecutter 中央构建脚本：对每个版本节点（versions/<mc>/）执行一次。
+// 26.1+ 的 MC 不再混淆：用 fabric-loom（无 mappings、无 remap、普通 configuration）；
+// 1.21.11 及更早：用 fabric-loom-remap + Mojang 官方映射（类名与 26.x 一致，源码零分叉）。
+
+buildscript {
+    repositories {
+        maven { url 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        // 同一个 Loom 实现 jar 内注册了 fabric-loom / fabric-loom-remap 等多个插件 id
+        classpath 'net.fabricmc:fabric-loom:1.17-SNAPSHOT'
+    }
 }
 
-version = project.mod_version
+plugins {
+    id 'java'
+}
+
+def mcVersion = stonecutter.current.version
+def unobfuscated = mcVersion.startsWith('26.')
+
+if (unobfuscated) {
+    pluginManager.apply('net.fabricmc.fabric-loom')
+} else {
+    pluginManager.apply('net.fabricmc.fabric-loom-remap')
+}
+
+version = "${project.mod_version}+${mcVersion}"
 group = project.maven_group
 
 base {
@@ -14,29 +38,49 @@ repositories {
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // 26.x 无 mappings、无 remap：fabric 依赖用普通 configuration
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    minecraft "com.mojang:minecraft:${mcVersion}"
+    if (unobfuscated) {
+        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    } else {
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    }
+}
+
+def javaVersion = unobfuscated ? 25 : 21
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(javaVersion)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
-    it.options.release = 25
+    it.options.release = javaVersion
 }
 
-java {
-    // Gradle 自身可运行在 JDK 17/21 上，编译与运行强制使用 JDK 25 工具链
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+if (!unobfuscated) {
+    loom {
+        mods {
+            "xrst_bridge" {
+                sourceSet sourceSets.main
+            }
+        }
     }
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
 }
 
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'mc_version', mcVersion
+    inputs.property 'java_version', javaVersion
     filesMatching('fabric.mod.json') {
-        expand 'version': project.version
+        expand(
+            'version': project.version,
+            'mc_version': mcVersion,
+            'java_version': javaVersion
+        )
     }
 }

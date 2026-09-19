@@ -3,7 +3,7 @@
   "id": "xrst_bridge",
   "version": "${version}",
   "name": "XRST Web Chat Bridge",
-  "description": "游戏内聊天与 xrst.uk 网页聊天室双向互通（仅服务端）。",
+  "description": "游戏内聊天与网页聊天室双向互通的轻量桥接 mod（仅服务端，与具体网站解耦）。",
   "authors": [
     "AaronXie"
   ],
@@ -16,9 +16,9 @@
     ]
   },
   "depends": {
-    "fabricloader": ">=0.19.0",
-    "minecraft": ">=26.2",
-    "java": ">=25",
+    "fabricloader": ">=0.16.0",
+    "minecraft": "${mc_version}",
+    "java": ">=${java_version}",
     "fabric-api": "*"
   }
 }
